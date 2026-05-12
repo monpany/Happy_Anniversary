@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>100 Days Anniversary</title>
+
+  <style>
+    *{
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body{
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #ff9eb5, #ffc3d1);
+      overflow: hidden;
+    }
+
+    .card{
+      width: 350px;
+      background: white;
+      padding: 30px;
+      border-radius: 25px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .heart{
+      font-size: 70px;
+      color: red;
+      animation: heartbeat 1s infinite;
+    }
+
+    h1{
+      margin-top: 15px;
+      color: #ff4f7b;
+      font-size: 28px;
+    }
+
+    h2{
+      margin-top: 10px;
+      color: #444;
+      font-size: 22px;
+    }
+
+    p{
+      margin-top: 20px;
+      color: #666;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    .love{
+      margin-top: 20px;
+      font-size: 20px;
+      color: #ff2e63;
+      font-weight: bold;
+    }
+
+    @keyframes heartbeat{
+      0%{
+        transform: scale(1);
+      }
+      25%{
+        transform: scale(1.2);
+      }
+      50%{
+        transform: scale(1);
+      }
+      75%{
+        transform: scale(1.2);
+      }
+      100%{
+        transform: scale(1);
+      }
+    }
+
+    @keyframes float{
+      0%{
+        transform: translateY(0px);
+      }
+      50%{
+        transform: translateY(-10px);
+      }
+      100%{
+        transform: translateY(0px);
+      }
+    }
+
+    .bg-hearts span{
+      position: absolute;
+      color: rgba(255,255,255,0.5);
+      font-size: 20px;
+      animation: move 10s linear infinite;
+    }
+
+    .bg-hearts span:nth-child(1){
+      left: 10%;
+      animation-duration: 8s;
+    }
+
+    .bg-hearts span:nth-child(2){
+      left: 30%;
+      animation-duration: 12s;
+    }
+
+    .bg-hearts span:nth-child(3){
+      left: 50%;
+      animation-duration: 10s;
+    }
+
+    .bg-hearts span:nth-child(4){
+      left: 70%;
+      animation-duration: 14s;
+    }
+
+    .bg-hearts span:nth-child(5){
+      left: 90%;
+      animation-duration: 9s;
+    }
+
+    @keyframes move{
+      0%{
+        transform: translateY(100vh);
+        opacity: 0;
+      }
+      100%{
+        transform: translateY(-100vh);
+        opacity: 1;
+      }
+    }
+
+    .play-button {
+      margin-top: 20px;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 30px;
+      background: #ff4f7b;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.25s ease;
+    }
+
+    .play-button:hover {
+      background: #ff2e63;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .card {
+        width: 90%;
+        max-width: 350px;
+        padding: 20px;
+      }
+
+      .heart {
+        font-size: 50px;
+      }
+
+      img {
+        width: 120px;
+        height: 120px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      p {
+        font-size: 14px;
+      }
+
+      .love {
+        font-size: 18px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        width: 95%;
+        padding: 15px;
+      }
+
+      .heart {
+        font-size: 40px;
+      }
+
+      img {
+        width: 100px;
+        height: 100px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      h2 {
+        font-size: 16px;
+      }
+
+      p {
+        font-size: 13px;
+      }
+
+      .love {
+        font-size: 16px;
+      }
+
+      .bg-hearts {
+        display: none; /* Hide floating hearts on very small screens */
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-hearts">
+    <span>❤</span>
+    <span>❤</span>
+    <span>❤</span>
+    <span>❤</span>
+    <span>❤</span>
+  </div>
+
+  <div class="card">
+    <div class="heart">❤</div>
+
+    <img src="image/aiily.png" alt="Aii Ly" style="width: 150px; height: 150px; border-radius: 50%; margin: 20px auto; display: block; border: 3px solid #ff4f7b;">
+
+    <h1>Happy 100 Days</h1>
+    <h2>Aii Ly 💖</h2>
+
+    <p>
+      Thank you for being with me for these amazing 100 days.
+      Every moment with you makes me happy and special.
+      I hope our love continues forever. ✨
+    </p>
+
+    <div class="love">
+      I Love You Babe ❤️
+    </div>
+
+    <audio autoplay loop style="display: none;">
+      <source src="bbe.mp3" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+    <script>
+    document.getElementById('playSong').addEventListener('click', () => {
+      document.getElementById('song').play();
+    });
+   </script>
+  </div>
+
+</body>
+</html>
