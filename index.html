@@ -1,267 +1,706 @@
 <!DOCTYPE html>
+<!--
+  ANNIVERSARY WEBSITE  (single file: HTML + CSS + JavaScript)
+
+  HOW THE PAGE WORKS
+  1. Scene 1 "intro": a canvas draws the glowing digital heart.
+  2. When you click the heart (or wait 12 seconds) the heart bursts.
+  3. Scene 2 "book": a 3D book opens and you flip through pages.
+
+  FILE MAP (search for these titles with Ctrl+F)
+  - HTML        : the page skeleton (scene 1 and scene 2)
+  - CSS         : colours, book look, page flip animation
+  - JS PART 1   : settings you can edit (names, messages)
+  - JS PART 2   : heart animation
+  - JS PART 3   : typing text under the heart
+  - JS PART 4   : the book
+  - JS PART 5   : start the page
+-->
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>100 Days Anniversary</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Our First Year</title>
+<!-- Handwriting font. If it fails to load, the browser uses "cursive". -->
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;700&display=swap" rel="stylesheet">
 
-  <style>
-    *{
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: Arial, sans-serif;
-    }
+<!-- ====================================================== CSS -->
+<style>
+/* Colours live here, so you can change them in ONE place */
+:root{
+  --bg:#02030a;        /* page background (almost black) */
+  --blue:#4db8ff;      /* glow colour of the heart */
+  --paper:#f6ecda;     /* book paper */
+  --text:#3b2f2c;      /* text colour on paper */
+  --rose:#a3365a;      /* page titles */
+  --gold:#e6c773;      /* cover + buttons */
+  color-scheme:dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);      /* keeps content away from phone notch */
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#02030a}}
+:root[data-theme="dark"]{--bg:#02030a}
 
-    body{
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: linear-gradient(135deg, #ff9eb5, #ffc3d1);
-      overflow: hidden;
-    }
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:#dff3ff;font-family:Georgia,serif;overflow:hidden}
 
-    .card{
-      width: 350px;
-      background: white;
-      padding: 30px;
-      border-radius: 25px;
-      text-align: center;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      animation: float 3s ease-in-out infinite;
-    }
+/* A "scene" fills the whole screen. Both scenes sit on top of each other. */
+.scene{position:absolute;inset:0;transition:opacity 1.4s ease}
 
-    .heart{
-      font-size: 70px;
-      color: red;
-      animation: heartbeat 1s infinite;
-    }
+/* ---------- Scene 1: heart ---------- */
+#heartCanvas{width:100%;height:100%;display:block;cursor:pointer;touch-action:none}
+#typedText{
+  position:absolute;left:0;right:0;bottom:6%;text-align:center;
+  font:13px/1.9 ui-monospace,Menlo,Consolas,monospace;letter-spacing:.14em;
+  color:var(--blue);text-shadow:0 0 10px var(--blue);pointer-events:none;
+}
+.caret{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
 
-    h1{
-      margin-top: 15px;
-      color: #ff4f7b;
-      font-size: 28px;
-    }
+/* When <body> gets the class "open", scene 1 fades out and scene 2 fades in */
+body.open #intro{opacity:0;pointer-events:none}
+body.open #bookScene{opacity:1;pointer-events:auto}
 
-    h2{
-      margin-top: 10px;
-      color: #444;
-      font-size: 22px;
-    }
+/* ---------- Scene 2: book ---------- */
+#bookScene{
+  opacity:0;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;
+  background:radial-gradient(ellipse at 50% 50%,#2d2119 0%,#120d0b 55%,#05060b 100%);
+  /* Size of ONE page. Everything else is calculated from it. */
+  --pageW:min(44vw,calc(62vh*.72),380px);
+  --pageH:calc(var(--pageW)/.72);
+}
+@media (max-width:600px){#bookScene{--pageW:min(46vw,calc(62vh*.72))}}
 
-    p{
-      margin-top: 20px;
-      color: #666;
-      line-height: 1.6;
-      font-size: 16px;
-    }
+.book{
+  position:relative;width:calc(var(--pageW)*2);height:var(--pageH);
+  perspective:2600px;                              /* gives the 3D depth */
+  transform:translateX(calc(var(--pageW)*-.5));    /* closed book: shift so the cover is centred */
+  transition:transform 1.4s cubic-bezier(.5,.1,.3,1);
+}
+.book.open{transform:none}                         /* open book: centred */
 
-    .love{
-      margin-top: 20px;
-      font-size: 20px;
-      color: #ff2e63;
-      font-weight: bold;
-    }
+/* A "sheet" is one sheet of paper: front side + back side.
+   It turns around its LEFT edge (the spine). */
+.sheet{
+  position:absolute;left:50%;top:0;width:var(--pageW);height:var(--pageH);
+  transform-origin:left center;transform-style:preserve-3d;
+  transition:transform 1.4s cubic-bezier(.5,.1,.3,1);
+}
+.sheet.flipped{transform:rotateY(-180deg)}         /* flipping = rotate 180 degrees */
 
-    @keyframes heartbeat{
-      0%{
-        transform: scale(1);
-      }
-      25%{
-        transform: scale(1.2);
-      }
-      50%{
-        transform: scale(1);
-      }
-      75%{
-        transform: scale(1.2);
-      }
-      100%{
-        transform: scale(1);
-      }
-    }
+/* One side of a sheet. backface-visibility hides it when facing away. */
+.face{
+  position:absolute;inset:0;overflow:hidden;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  font-size:max(11px,calc(var(--pageW)/19));       /* text grows with the book */
+  color:var(--text);background-color:var(--paper);
+}
+/* Right-hand page: dark shade near the spine (left edge) + paper dots */
+.face.front{
+  border-radius:0 6px 6px 0;cursor:pointer;
+  background-image:linear-gradient(90deg,rgba(70,45,20,.35),rgba(70,45,20,0) 10%),radial-gradient(rgba(120,90,50,.07) 1px,transparent 1.2px);
+  background-size:100% 100%,5px 5px;
+}
+/* Left-hand page: this side is the back of the sheet, so we turn it around */
+.face.back{
+  transform:rotateY(180deg);border-radius:6px 0 0 6px;
+  background-image:linear-gradient(270deg,rgba(70,45,20,.35),rgba(70,45,20,0) 10%),radial-gradient(rgba(120,90,50,.07) 1px,transparent 1.2px);
+  background-size:100% 100%,5px 5px;
+}
+/* Moving shadow while a page turns (looks like a real curl) */
+.turning .face::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.4),transparent 70%);animation:pageShade 1.4s;
+}
+@keyframes pageShade{0%,100%{opacity:0}50%{opacity:1}}
 
-    @keyframes float{
-      0%{
-        transform: translateY(0px);
-      }
-      50%{
-        transform: translateY(-10px);
-      }
-      100%{
-        transform: translateY(0px);
-      }
-    }
+/* Leather cover (the front side of sheet 0) */
+.cover{
+  background:linear-gradient(135deg,#4a1a28,#2a0d17)!important;
+  border-radius:0 10px 10px 0!important;cursor:pointer;
+  box-shadow:inset 0 0 0 7px #2a0d17,inset 0 0 0 9px #c9a24b,inset 6px 0 14px rgba(0,0,0,.6);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;color:var(--gold);padding:12%;
+}
+.cover h1{font:700 1.9em "Dancing Script","Brush Script MT",cursive;margin:.2em 0;text-shadow:0 0 14px rgba(230,199,115,.5)}
+.cover .bigHeart{font-size:3.2em;text-shadow:0 0 18px rgba(255,120,150,.7);animation:heartbeat 1.4s infinite}
+@keyframes heartbeat{50%{transform:scale(1.12)}}
+.cover small{opacity:.7;letter-spacing:.2em;font-size:.7em}
 
-    .bg-hearts span{
-      position: absolute;
-      color: rgba(255,255,255,0.5);
-      font-size: 20px;
-      animation: move 10s linear infinite;
-    }
+/* Page with a love letter (handwriting + blue lines like notebook paper) */
+.letter{
+  height:100%;padding:12% 11% 10% 14%;display:flex;flex-direction:column;justify-content:center;
+  font-family:"Dancing Script","Brush Script MT","Segoe Script",cursive;overflow:auto;
+}
+.letter h2{margin:0 0 .5em;font-size:1.7em;color:var(--rose)}
+.letter p{
+  margin:0;font-size:1.25em;line-height:1.6;white-space:pre-line;
+  background-image:repeating-linear-gradient(transparent 0 calc(1.6em - 1px),rgba(100,140,190,.28) calc(1.6em - 1px) 1.6em);
+}
 
-    .bg-hearts span:nth-child(1){
-      left: 10%;
-      animation-duration: 8s;
-    }
+/* Page with a photo (a Polaroid with tape) */
+.photoPage{height:100%;display:flex;align-items:center;justify-content:center}
+.polaroid{width:78%;height:74%;background:#fff;padding:5% 5% 16%;box-shadow:0 4px 12px rgba(0,0,0,.3);transform:rotate(-2.5deg);position:relative}
+.polaroid::before{ /* the piece of tape on top */
+  content:"";position:absolute;top:-10px;left:50%;width:34%;height:18px;
+  transform:translateX(-50%) rotate(3deg);background:rgba(240,214,120,.7);
+}
+.photo{
+  width:100%;height:100%;background:#e8dcc6 center/cover no-repeat;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  font:.8em Georgia,serif;color:#8b7a66;padding:6px;
+}
+.caption{position:absolute;left:0;right:0;bottom:3%;text-align:center;font:1.25em "Dancing Script","Brush Script MT",cursive;color:#555}
 
-    .bg-hearts span:nth-child(2){
-      left: 30%;
-      animation-duration: 12s;
-    }
+/* Page stack, leather back cover and shadows (all sit BEHIND the sheets) */
+.stackRight,.stackLeft,.leatherRight,.leatherLeft{position:absolute;width:var(--pageW);height:var(--pageH);z-index:0}
+.stackRight{left:50%;background:#efe3cf;border-radius:0 6px 6px 0;
+  box-shadow:1px 1px 0 #d9ccb4,2px 2px 0 #f7efe0,3px 3px 0 #d9ccb4,4px 4px 0 #f7efe0,5px 5px 0 #cdbfa3}
+.stackLeft{right:50%;opacity:0;transition:opacity .8s;background:#efe3cf;border-radius:6px 0 0 6px;
+  box-shadow:-1px 1px 0 #d9ccb4,-2px 2px 0 #f7efe0,-3px 3px 0 #d9ccb4,-4px 4px 0 #f7efe0}
+.leatherRight,.leatherLeft{top:-7px;height:calc(var(--pageH) + 14px);width:calc(var(--pageW) + 8px);background:#2a0d17;box-shadow:0 24px 50px rgba(0,0,0,.7);z-index:-1}
+.leatherRight{left:50%;border-radius:0 10px 10px 0}
+.leatherLeft{right:50%;border-radius:10px 0 0 10px;opacity:0;transition:opacity .8s}
+.book.open .stackLeft,.book.open .leatherLeft{opacity:1}
 
-    .bg-hearts span:nth-child(3){
-      left: 50%;
-      animation-duration: 10s;
-    }
+/* Buttons under the book */
+.buttons{display:flex;gap:18px;align-items:center;color:#d9c9a8}
+button{font:inherit;background:transparent;color:var(--gold);border:1px solid #8a6f33;border-radius:999px;padding:9px 22px;cursor:pointer}
+button:disabled{opacity:.3;cursor:default}
+#pageCounter{min-width:60px;text-align:center;font-size:14px}
 
-    .bg-hearts span:nth-child(4){
-      left: 70%;
-      animation-duration: 14s;
-    }
-
-    .bg-hearts span:nth-child(5){
-      left: 90%;
-      animation-duration: 9s;
-    }
-
-    @keyframes move{
-      0%{
-        transform: translateY(100vh);
-        opacity: 0;
-      }
-      100%{
-        transform: translateY(-100vh);
-        opacity: 1;
-      }
-    }
-
-    .play-button {
-      margin-top: 20px;
-      padding: 12px 25px;
-      border: none;
-      border-radius: 30px;
-      background: #ff4f7b;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.25s ease;
-    }
-
-    .play-button:hover {
-      background: #ff2e63;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .card {
-        width: 90%;
-        max-width: 350px;
-        padding: 20px;
-      }
-
-      .heart {
-        font-size: 50px;
-      }
-
-      img {
-        width: 120px;
-        height: 120px;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
-
-      h2 {
-        font-size: 18px;
-      }
-
-      p {
-        font-size: 14px;
-      }
-
-      .love {
-        font-size: 18px;
-      }
-    }
-
-    @media (max-width: 480px) {
-      .card {
-        width: 95%;
-        padding: 15px;
-      }
-
-      .heart {
-        font-size: 40px;
-      }
-
-      img {
-        width: 100px;
-        height: 100px;
-      }
-
-      h1 {
-        font-size: 20px;
-      }
-
-      h2 {
-        font-size: 16px;
-      }
-
-      p {
-        font-size: 13px;
-      }
-
-      .love {
-        font-size: 16px;
-      }
-
-      .bg-hearts {
-        display: none; /* Hide floating hearts on very small screens */
-      }
-    }
-  </style>
+/* Hearts that float up on the last page */
+.floatingHeart{position:absolute;bottom:-20px;pointer-events:none;animation:floatUp 5s linear forwards}
+@keyframes floatUp{to{transform:translateY(-110vh) rotate(20deg);opacity:0}}
+</style>
 </head>
+
+<!-- ====================================================== HTML -->
 <body>
+  <!-- Scene 1: the heart -->
+  <section id="intro" class="scene">
+    <canvas id="heartCanvas"></canvas>
+    <div id="typedText"></div>
+  </section>
 
-  <div class="bg-hearts">
-    <span>❤</span>
-    <span>❤</span>
-    <span>❤</span>
-    <span>❤</span>
-    <span>❤</span>
-  </div>
-
-  <div class="card">
-    <div class="heart">❤</div>
-
-    <img src="aiily.png" alt="Aii Ly" style="width: 150px; height: 150px; border-radius: 50%; margin: 20px auto; display: block; border: 3px solid #ff4f7b;">
-
-    <h1>Happy 100 Days</h1>
-    <h2>Aii Ly 💖</h2>
-
-    <p>
-      Thank you for being with me for these amazing 100 days.
-      Every moment with you makes me happy and special.
-      I hope our love continues forever. ✨
-    </p>
-
-    <div class="love">
-      I Love You Babe ❤️
+  <!-- Scene 2: the book (the pages are created by JavaScript) -->
+  <section id="bookScene" class="scene">
+    <div class="book" id="book">
+      <div class="leatherRight"></div><div class="leatherLeft"></div>
+      <div class="stackRight"></div><div class="stackLeft"></div>
     </div>
+    <div class="buttons">
+      <button id="prevButton">←</button>
+      <span id="pageCounter"></span>
+      <button id="nextButton">→</button>
+    </div>
+  </section>
 
-    <audio autoplay loop style="display: none;">
-      <source src="bbe.mp3" type="audio/mpeg">
-      Your browser does not support the audio element.
-    </audio>
-    <script>
-    document.getElementById('playSong').addEventListener('click', () => {
-      document.getElementById('song').play();
+  <!-- Hidden file picker used when you tap a photo -->
+  <input type="file" id="fileInput" accept="image/*" hidden>
+
+<script>
+/* ====================================================== JS PART 1: SETTINGS
+   Change the text here. You do not need to touch the rest. */
+const HER_NAME = "Aii Ly";
+const MY_NAME = "Pany";
+const START_DATE = "";              // optional, like "2025-11-15" (shows days together)
+const AUTO_OPEN_SECONDS = 12;       // heart opens the book by itself after this time
+
+const COVER_TITLE = "Our First Year";
+const COVER_SUBTITLE = "for " + HER_NAME;
+
+// Text under each photo (same order as PHOTO_FILES)
+const PHOTO_CAPTIONS = [
+  "Day one",
+  "Our little moments",
+  "Together",
+  "Forever",
+  "A special moment",
+  "More memories",
+  "Always together"
+];
+
+// Add or remove photo paths here; each one gets its own page.
+// Leave "" if you don't have a photo yet (the "Tap to add" box will show).
+const PHOTO_FILES = [
+  "image/image copy 6.png",
+  "image/image copy.png",
+  "image/image.png",
+  "image/image copy 2.png",
+  "image/image copy 3.png",
+  "image/image copy 4.png",
+  "image/image copy 5.png"
+];
+
+
+
+// The 4 love-letter pages (each has a title and a text)
+// const LETTERS = [
+//   { title: "How it began",   text: "The day we met, I didn’t know my life was about to change. Thank you for walking into it." },
+//   { title: "Little moments", text: "Study nights, quiet coffee, laughing at nothing. These small moments are my favorite part of every day." },
+//   { title: "Through it all", text: "Exams, stress, long days — you made all of it lighter. You are my calm and my cheer." },
+//   { title: "Happy 1 Year ♥", text: "One year down, and I would choose you again every time.\nI love you.\n— " + MY_NAME }
+// ];
+
+const LETTERS = [
+  { title: "How it began",       text: HER_NAME + ", the day we met, I didn’t know my life was about to change. Thank you for walking into it." },
+  { title: "First smiles",       text: "I was so nervous back then. One smile from you and everything felt easy." },
+  { title: "Little moments",     text: "Study nights, quiet coffee, laughing at nothing. These small moments are my favorite part of every day." },
+  { title: "You make me better", text: "You push me to try harder and be kinder. I am a better person because of you." },
+  { title: "Through it all",     text: "Exams, stress, long days — you made all of it lighter. You are my calm and my cheer." },
+  { title: "My wish for us",     text: "I wish for many more trips, more late-night talks, and more years holding your hand." },
+  { title: "Happy 1 Year ♥",     text: "One year down, and I would choose you again every time.\nI love you.\n— " + MY_NAME }
+];
+
+
+/* ====================================================== JS PART 2: HEART ANIMATION
+   The heart is made of thousands of tiny squares ("particles").
+   We redraw the whole canvas about 60 times per second. */
+
+const body = document.body;
+const canvas = document.getElementById("heartCanvas");
+const ctx = canvas.getContext("2d");          // ctx = the "pen" we draw with
+
+// Variables shared by the drawing functions
+let screenW, screenH;                          // canvas size in pixels
+let scale;                                     // how many pixels = 1 "heart unit"
+let centerX, centerY;                          // where the heart is on screen
+let particles = [];                            // the heart dots
+let sparkles = [];                             // small dots floating up
+let rainColumns = [];                          // the falling 0 and 1
+let pointerX = -999, pointerY = -999;          // mouse/finger position (in heart units)
+let burstStartTime = 0;                        // 0 = no burst yet
+let lastFrameTime = performance.now();
+const startTime = performance.now();
+let autoOpenTimer;
+
+const PARTICLE_COLORS = ["#5cc0ff", "#9ad8ff", "#eaf9ff"];   // blue, light blue, almost white
+
+// Keeps a number between min and max
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+// The heart equation: give it an angle (0 to 2π), it returns a point [x, y] on the heart edge.
+function heartPoint(angle) {
+  const x = 16 * Math.pow(Math.sin(angle), 3);
+  const y = -(13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle));
+  return [x, y];
+}
+
+// Create all particles once.
+function createParticles() {
+  particles = [];
+  for (let i = 0; i < 3000; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const [edgeX, edgeY] = heartPoint(angle);
+
+    // 45% of the dots sit near the edge, the others fill the inside
+    const onEdge = Math.random() < 0.45;
+    const inside = onEdge ? 1 - Math.random() * 0.05 : Math.sqrt(Math.random());
+
+    particles.push({
+      homeX: edgeX * inside,                     // where the dot belongs in the heart
+      homeY: edgeY * inside,
+      startX: (Math.random() - 0.5) * 130,       // where the dot starts (far away)
+      startY: (Math.random() - 0.5) * 100,
+      pushX: 0, pushY: 0,                        // how far the mouse pushed it
+      wobble: Math.random() * 0.45,              // small shaking
+      size: Math.random() * 1.5 + 0.7,
+      speed: Math.random() * 2 + 1,              // twinkle speed
+      phase: Math.random() * 6.28,               // random start of twinkle
+      color: Math.random() < 0.1 ? 2 : (Math.random() < 0.4 ? 1 : 0),
+      delay: Math.random() * 1.4                 // dots arrive at different times
     });
-   </script>
-  </div>
+  }
+  sparkles = [];
+  for (let i = 0; i < 120; i++) {
+    sparkles.push({ x: (Math.random() - 0.5) * 50, y: (Math.random() - 0.5) * 40, speed: Math.random() * 3 + 1, phase: Math.random() * 6.28 });
+  }
+}
 
+// Set the canvas size (called at the start and when the window changes)
+function resizeCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);    // sharp on retina screens
+  screenW = window.innerWidth;
+  screenH = window.innerHeight;
+  canvas.width = screenW * dpr;
+  canvas.height = screenH * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  scale = Math.min(screenW, screenH * 1.1) / 40;
+  centerX = screenW / 2;
+  centerY = screenH * 0.45 - 2.5 * scale;
+
+  // one falling-digit column every 18 pixels
+  rainColumns = [];
+  for (let i = 0; i < Math.ceil(screenW / 18); i++) {
+    rainColumns.push({ y: Math.random() * screenH, speed: 60 + Math.random() * 160 });
+  }
+}
+
+// --- small drawing helpers, one for each visual effect ---
+
+// Falling 0 and 1 in the background
+function drawDigitalRain(dt) {
+  ctx.font = "14px ui-monospace, monospace";
+  rainColumns.forEach((column, index) => {
+    column.y += column.speed * dt;
+    if (column.y > screenH + 20) column.y = -20;        // restart at the top
+    const x = index * 18;
+    ctx.fillStyle = "rgba(77,184,255,.3)";
+    ctx.fillText(Math.random() < 0.5 ? "0" : "1", x, column.y);
+    ctx.fillStyle = "rgba(220,245,255,.55)";            // brighter "head" of the column
+    ctx.fillText(Math.random() < 0.5 ? "0" : "1", x, column.y + 14);
+  });
+}
+
+// Glowing floor lines under the heart
+function drawGrid() {
+  const floorY = centerY + 19.5 * scale;
+  ctx.lineWidth = 1;
+  for (let row = 0; row < 9; row++) {                   // horizontal lines
+    const y = floorY + row * row * scale * 0.32;
+    ctx.strokeStyle = "rgba(77,184,255," + (0.16 * (1 - row / 9)) + ")";
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(screenW, y); ctx.stroke();
+  }
+  ctx.strokeStyle = "rgba(77,184,255,.07)";
+  for (let i = -9; i <= 9; i++) {                       // lines going to the horizon
+    ctx.beginPath();
+    ctx.moveTo(centerX + i * scale * 1.6, floorY);
+    ctx.lineTo(centerX + i * scale * 7, screenH);
+    ctx.stroke();
+  }
+}
+
+// One heart outline (used for the "ripple" rings)
+function drawHeartOutline(size, opacity) {
+  ctx.beginPath();
+  for (let i = 0; i <= 90; i++) {
+    const [x, y] = heartPoint((i / 90) * Math.PI * 2);
+    const px = centerX + x * size * scale;
+    const py = centerY + y * size * scale;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = "rgba(92,192,255," + opacity + ")";
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+}
+
+// 3 heart outlines that grow and fade, like ripples
+function drawBeatRipples(time, burst) {
+  if (time < 2.5) return;                               // wait until the heart is assembled
+  for (let i = 0; i < 3; i++) {
+    const progress = (time * 0.8 + i / 3) % 1;          // 0 → 1, then repeats
+    drawHeartOutline(1 + progress * 0.9, (1 - progress) * 0.45 * (1 - burst));
+  }
+}
+
+// The main part: move and draw every particle
+function drawHeartParticles(time, burst) {
+  const beat = 1 + 0.05 * Math.pow(Math.sin(time * 3.2), 8);   // heart gets a little bigger on each beat
+  const scanY = Math.sin(time * 1.1) * 13 + 2.5;               // height of the scan line
+  const explode = 1 + burst * 5;                               // when clicked, everything flies outward
+
+  for (const p of particles) {
+    // 1) Fly-in: progress goes from 0 to 1 over 2.2 seconds (after its own delay)
+    const progress = clamp((time - p.delay) / 2.2, 0, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);               // starts fast, ends slow
+
+    // 2) Position = somewhere between the start and the home position, plus a small wobble
+    let x = p.startX + (p.homeX * beat - p.startX) * eased + Math.sin(time * p.speed + p.phase) * p.wobble * eased;
+    let y = p.startY + (p.homeY * beat - p.startY) * eased + Math.cos(time * p.speed + p.phase) * p.wobble * eased;
+
+    // 3) Mouse push: dots close to the pointer move away from it
+    const dx = x - pointerX, dy = y - pointerY;
+    const distanceSquared = dx * dx + dy * dy;
+    let pushToX = 0, pushToY = 0;
+    if (distanceSquared < 36) {                                // closer than 6 units
+      const strength = ((1 - distanceSquared / 36) * 3.5) / (Math.sqrt(distanceSquared) + 0.1);
+      pushToX = dx * strength;
+      pushToY = dy * strength;
+    }
+    p.pushX += (pushToX - p.pushX) * 0.12;                     // move smoothly, not instantly
+    p.pushY += (pushToY - p.pushY) * 0.12;
+    x += p.pushX;
+    y += p.pushY;
+
+    // 4) Twinkle: opacity changes over time
+    let opacity = 0.3 + 0.7 * Math.abs(Math.sin(time * p.speed + p.phase));
+    let color = p.color;
+
+    // 5) Scan line: dots on the line turn white and shake sideways (the "glitch")
+    if (eased > 0.9 && Math.abs(y - scanY) < 0.9) {
+      color = 2;
+      opacity = 1;
+      x += Math.sin(p.phase * 50 + time * 30) * 0.7;
+    }
+
+    // 6) Draw the dot as a tiny square
+    ctx.globalAlpha = opacity * (1 - burst);
+    ctx.fillStyle = PARTICLE_COLORS[color];
+    ctx.fillRect(centerX + x * explode * scale, centerY + y * explode * scale, p.size, p.size);
+  }
+}
+
+// Thin horizontal line that moves up and down over the heart
+function drawScanLine(time, burst) {
+  const scanY = Math.sin(time * 1.1) * 13 + 2.5;
+  ctx.globalAlpha = 0.5 * (1 - burst);
+  ctx.fillStyle = "#bfeaff";
+  ctx.fillRect(centerX - 17 * scale, centerY + scanY * scale, 34 * scale, 1);
+}
+
+// Little dots that float upward around the heart
+function drawSparkles(time, dt, burst) {
+  sparkles.forEach(s => {
+    s.y -= s.speed * dt;
+    if (s.y < -22) s.y = 22;                                   // back to the bottom
+    ctx.globalAlpha = (0.2 + 0.6 * Math.abs(Math.sin(time * 2 + s.phase))) * (1 - burst);
+    ctx.fillStyle = "#9ad8ff";
+    ctx.fillRect(centerX + (s.x + Math.sin(time + s.phase) * 1.5) * scale, centerY + s.y * scale, 2, 2);
+  });
+}
+
+// Runs every frame: draws one complete picture
+function drawFrame(now) {
+  const time = (now - startTime) / 1000;                       // seconds since page load
+  const dt = Math.min((now - lastFrameTime) / 1000, 0.05);     // seconds since last frame
+  lastFrameTime = now;
+
+  // burst goes 0 → 1 during the 0.9 seconds after the click
+  let burst = 0;
+  if (burstStartTime) {
+    burst = (now - burstStartTime) / 900;
+    if (burst >= 1) { showBookScene(); return; }               // animation finished → stop drawing
+  }
+
+  // Paint a see-through dark layer instead of clearing → leaves soft light trails
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(2,3,10,.26)";
+  ctx.fillRect(0, 0, screenW, screenH);
+
+  drawDigitalRain(dt);
+  drawGrid();
+
+  ctx.globalCompositeOperation = "lighter";                    // overlapping dots add up to a glow
+  drawBeatRipples(time, burst);
+  drawHeartParticles(time, burst);
+  drawScanLine(time, burst);
+  drawSparkles(time, dt, burst);
+  ctx.globalAlpha = 1;
+
+  requestAnimationFrame(drawFrame);                            // ask the browser for the next frame
+}
+
+// User clicked the heart (or the timer ended): start the burst
+function startBurst() {
+  if (burstStartTime || body.classList.contains("open")) return;
+  clearTimeout(autoOpenTimer);
+  burstStartTime = performance.now();
+}
+
+// Burst finished: switch to the book scene
+function showBookScene() {
+  body.classList.add("open");
+  try { location.hash = "book"; } catch (e) {}
+  setTimeout(() => turnPage(1), 2800);                         // book opens by itself after 2.8s
+}
+
+
+/* ====================================================== JS PART 3: TYPING TEXT */
+const daysTogether = START_DATE ? Math.floor((Date.now() - new Date(START_DATE)) / 86400000) : null;
+const TYPED_LINES = [
+  "> booting love.exe …",
+  daysTogether !== null ? "> " + daysTogether + " days together" : "> 1 year together",
+  "> tap the heart ♥"
+];
+const typedTextBox = document.getElementById("typedText");
+let lineIndex = 0, charIndex = 0;
+
+// Types one letter, then calls itself again after a short pause
+function typeNextLetter() {
+  if (lineIndex >= TYPED_LINES.length) return;                 // all lines are done
+  const line = TYPED_LINES[lineIndex];
+  const finishedLines = TYPED_LINES.slice(0, lineIndex).join("<br>");
+  typedTextBox.innerHTML = finishedLines + (lineIndex ? "<br>" : "") + line.slice(0, charIndex) + '<span class="caret">▌</span>';
+
+  if (charIndex < line.length) {
+    charIndex++;
+    setTimeout(typeNextLetter, 45);                            // next letter
+  } else {
+    lineIndex++; charIndex = 0;
+    setTimeout(typeNextLetter, 500);                           // next line
+  }
+}
+
+
+/* ====================================================== JS PART 4: THE BOOK
+   The book is a list of "sheets". Each sheet has a FRONT and a BACK.
+     sheet 0: front = cover        back = photo 1
+     later sheets: front = a letter (if available), back = the next photo
+     final sheet: back = "The End"
+   When a sheet is flipped, its back becomes the LEFT page and the next sheet's front is the RIGHT page. */
+
+const bookElement = document.getElementById("book");
+const fileInput = document.getElementById("fileInput");
+const TOTAL_SHEETS = Math.max(PHOTO_FILES.length, LETTERS.length) + 1;
+let currentFlips = 0;            // how many sheets are flipped (0 = book closed)
+let isFlipping = false;          // true while an animation runs (blocks double clicks)
+let clickedPhotoBox = null;      // the photo box the user tapped
+
+// Stops special characters in your text from breaking the HTML
+function safeText(text) {
+  return text.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+// HTML for a photo page (Polaroid)
+function photoPageHTML(number) {
+  return '<div class="photoPage"><div class="polaroid">' +
+         '<div class="photo" style=\'background-image:url("' + PHOTO_FILES[number] + '")\'><br></div>' +
+         '<div class="caption">' + safeText(PHOTO_CAPTIONS[number] || "") + '</div></div></div>';
+}
+
+// HTML for a letter page
+function letterPageHTML(letter) {
+  return '<div class="letter"><h2>' + safeText(letter.title) + '</h2><p>' + safeText(letter.text) + '</p></div>';
+}
+
+// What goes on the front and back of every sheet
+const coverHTML = '<div class="bigHeart">♥</div><h1>' + safeText(COVER_TITLE) + '</h1><small>' + safeText(COVER_SUBTITLE) + '</small>';
+const endPageHTML = '<div class="letter" style="text-align:center"><h2>The End… ♥</h2><p>…of year one.</p></div>';
+const sheetContents = Array.from({ length: TOTAL_SHEETS }, (_, index) => ({
+  front: index === 0
+    ? coverHTML
+    : LETTERS[index - 1]
+      ? letterPageHTML(LETTERS[index - 1])
+      : "",
+  back: index === TOTAL_SHEETS - 1
+    ? endPageHTML
+    : index < PHOTO_FILES.length
+      ? photoPageHTML(index)
+      : ""
+}));
+
+// Build the sheets and add them to the book
+const sheetElements = sheetContents.map((content, index) => {
+  const sheet = document.createElement("div");
+  sheet.className = "sheet";
+  sheet.style.zIndex = TOTAL_SHEETS - index;                   // first sheet is on top of the pile
+
+  const frontClass = index === 0 ? "face front cover" : "face front";
+  sheet.innerHTML = '<div class="' + frontClass + '">' + content.front + '</div>' +
+                    '<div class="face back">' + content.back + '</div>';
+
+  // Click on a right-hand page → go to next page
+  sheet.querySelector(".front").onclick = () => {
+    if (index === currentFlips) turnPage(1);
+  };
+
+  // Click on a photo → choose an image from the phone/computer
+  const photoBox = sheet.querySelector(".photo");
+  if (photoBox) {
+    photoBox.onclick = (event) => {
+      event.stopPropagation();
+      clickedPhotoBox = photoBox;
+      fileInput.click();
+    };
+  }
+
+  bookElement.appendChild(sheet);
+  return sheet;
+});
+
+// When the user picks an image, show it inside the Polaroid
+fileInput.onchange = () => {
+  const file = fileInput.files[0];
+  if (!file || !clickedPhotoBox) return;
+  clickedPhotoBox.style.backgroundImage = "url(" + URL.createObjectURL(file) + ")";
+  clickedPhotoBox.textContent = "";
+  fileInput.value = "";
+};
+
+// Turn a page. direction: +1 = next, -1 = previous
+function turnPage(direction) {
+  const newFlips = clamp(currentFlips + direction, 0, TOTAL_SHEETS - 1);
+  if (isFlipping || newFlips === currentFlips) return;
+  isFlipping = true;
+
+  const sheetIndex = direction > 0 ? currentFlips : currentFlips - 1;   // which sheet moves
+  const sheet = sheetElements[sheetIndex];
+  const goingForward = direction > 0;
+
+  sheet.classList.add("turning");                              // shows the moving shadow
+  sheet.classList.toggle("flipped", goingForward);             // CSS rotates the sheet
+
+  // Half-way through, change the stacking order (flipped sheets pile up on the left)
+  setTimeout(() => { sheet.style.zIndex = goingForward ? sheetIndex + 1 : TOTAL_SHEETS - sheetIndex; }, 650);
+  // After the animation, allow clicks again
+  setTimeout(() => { sheet.classList.remove("turning"); isFlipping = false; }, 1400);
+
+  currentFlips = newFlips;
+  bookElement.classList.toggle("open", currentFlips >= 1);
+  updateButtons();
+  if (currentFlips === TOTAL_SHEETS - 1) setTimeout(spawnHearts, 1200);   // last page → hearts
+}
+
+function updateButtons() {
+  document.getElementById("pageCounter").textContent = currentFlips ? currentFlips + " / " + (TOTAL_SHEETS - 1) : "Cover";
+  document.getElementById("prevButton").disabled = currentFlips === 0;
+  document.getElementById("nextButton").disabled = currentFlips === TOTAL_SHEETS - 1;
+}
+
+// Floating hearts on the last page
+function spawnHearts() {
+  for (let i = 0; i < 14; i++) {
+    const heart = document.createElement("span");
+    heart.className = "floatingHeart";
+    heart.textContent = "♥";
+    heart.style.left = (10 + Math.random() * 80) + "%";
+    heart.style.color = "hsl(" + (340 + Math.random() * 20) + ",80%,65%)";
+    heart.style.fontSize = (14 + Math.random() * 22) + "px";
+    heart.style.animationDelay = Math.random() * 2 + "s";
+    document.getElementById("bookScene").appendChild(heart);
+    setTimeout(() => heart.remove(), 8000);
+  }
+}
+
+document.getElementById("prevButton").onclick = () => turnPage(-1);
+document.getElementById("nextButton").onclick = () => turnPage(1);
+window.addEventListener("keydown", (event) => {
+  if (!body.classList.contains("open")) return;
+  if (event.key === "ArrowRight") turnPage(1);
+  if (event.key === "ArrowLeft") turnPage(-1);
+});
+
+
+/* ====================================================== JS PART 5: START */
+resizeCanvas();
+createParticles();
+updateButtons();
+typeNextLetter();
+
+window.addEventListener("resize", resizeCanvas);
+canvas.addEventListener("click", startBurst);
+canvas.addEventListener("pointermove", (event) => {            // convert mouse position to heart units
+  pointerX = (event.clientX - centerX) / scale;
+  pointerY = (event.clientY - centerY) / scale;
+});
+canvas.addEventListener("pointerleave", () => { pointerX = pointerY = -999; });
+
+if (location.hash === "#book") {
+  // Someone opened the link ending in #book → skip the heart
+  body.classList.add("open");
+  setTimeout(() => turnPage(1), 1200);
+} else {
+  requestAnimationFrame(drawFrame);
+  autoOpenTimer = setTimeout(startBurst, AUTO_OPEN_SECONDS * 1000);
+}
+</script>
 </body>
 </html>
